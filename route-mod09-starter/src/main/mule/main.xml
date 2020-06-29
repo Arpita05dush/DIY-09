@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<flow name="mainFlow" doc:id="8f456822-86a0-4b36-a6b9-b9fbc0f6a57a" >
+		<http:listener doc:name="Listener" doc:id="cc92ebb8-0173-46bd-8e99-ec28c48a4c6b" config-ref="HTTP_Listener_config" path="/accountsflights"/>
+		<scatter-gather doc:name="Scatter-Gather" doc:id="c300c8dc-7a2f-4a20-ada8-718b041991be" >
+			<route >
+				<flow-ref doc:name="accountsFlow" doc:id="c081bc2c-5a75-4d35-b4f1-3faa6597b9cf" name="accounts"/>
+			</route>
+			<route >
+				<flow-ref doc:name="flightsFlow" doc:id="695e81fa-3a08-4059-bc68-9f9e35eeb96b" name="flights"/>
+			</route>
+		</scatter-gather>
+		<choice doc:name="Choice" doc:id="2665328d-3773-4489-8367-897081eecde7" >
+			<when expression="#[not ( isEmpty(payload['0'].payload) or payload['1'].payload.body.listAllFlightsResponse == null )]">
+				<set-payload value="Accounts and Flights are empty" doc:name="Accounts and Flights are empty" doc:id="b7be7558-d730-45b8-95f6-4b8a48c948b6" />
+			</when>
+			<when expression="#[isEmpty(payload['0'].payload)]">
+				<set-payload value="Accounts Empty" doc:name="Accounts Empty" doc:id="cb9661ae-79a2-47eb-a66f-b4c16b77917c" />
+			</when>
+			<when expression="#[payload['1'].payload.body.listAllFlightsResponse == null]">
+				<set-payload value="Flights Empty" doc:name="Flights Empty" doc:id="7ec0a3e4-60c9-473e-a066-3303227096f5" />
+			</when>
+			<otherwise >
+				<ee:transform doc:name="Final Payload" doc:id="fc60830b-ce01-4a4e-b87e-9a86030f8dee">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	accounts: {
+		attributes: payload['0'].attributes,
+		payload: payload['0'].payload
+	},
+	flights: {
+		attributes: payload['1'].attributes,
+		payload: payload['1'].payload.body
+	}
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</otherwise>
+		</choice>
+		<logger level="INFO" doc:name="Logger" doc:id="ee3b508b-3a0c-4b6d-8e56-ed920a064607" />
+	</flow>
+</mule>
